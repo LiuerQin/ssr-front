@@ -13,6 +13,13 @@
                 </span>
                 <el-input placeholder="密码"></el-input>
             </el-form-item>
+            <el-form-item prop="captcha">
+                <span>
+                    <li class="el-icon-lock"></li>
+                </span>
+                <el-input placeholder="验证码"></el-input>
+                <img :src="captchaUrl" alt="" @click="updateCaptcha">
+            </el-form-item>
         </el-form>
     </div>
 </template>
@@ -22,14 +29,17 @@ export default {
     layout: 'login',
     data () {
         return {
-            rules: {}
+            rules: {},
+            captchaUrl: "/api/captcha"
         }
+    },
+    methods: {
+      updateCaptcha () {
+        this.captchaUrl = "/api/captcha?t=" + new Date().getTime()
+      }
     }
 }
 </script>
 
 <style lang="stylus" scoped>
-    .login-form 
-        width 800px
-        margin 50px auto
 </style>
