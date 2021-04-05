@@ -22,7 +22,7 @@ export default {
       .title-container
         text-align center 
         img
-          width 100px
+          width 150px
       .captcha-container
         width 340px
         position relative 

@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="login-container">
         <el-form :rules="rules" class="login-form">
             <el-form-item prop="email">
                 <span>
@@ -13,12 +13,14 @@
                 </span>
                 <el-input placeholder="密码"></el-input>
             </el-form-item>
-            <el-form-item prop="captcha">
+            <el-form-item prop="captcha" class="captcha-container">
                 <span>
                     <li class="el-icon-lock"></li>
                 </span>
                 <el-input placeholder="验证码"></el-input>
-                <img :src="captchaUrl" alt="" @click="updateCaptcha">
+                <div class="captcha">
+                    <img :src="captchaUrl" alt="" @click="updateCaptcha">
+                </div>
             </el-form-item>
         </el-form>
     </div>
