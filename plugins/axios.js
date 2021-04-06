@@ -3,11 +3,10 @@ import axios from 'axios'
 
 const service = axios.create({
     // timeout: 5000,
-    baseUrl: '/api'
+    baseURL: '/api'
 })
 
-// service.request.interceptor()
-
+// service.interceptor.request()
 Vue.prototype.$http = service
 
 export const http = service
