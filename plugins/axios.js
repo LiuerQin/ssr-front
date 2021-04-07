@@ -6,6 +6,13 @@ const service = axios.create({
     baseURL: '/api'
 })
 
+service.interceptors.response.use(
+    async (response) => {
+        let {data} = response
+        return data
+    }
+)
+
 // service.interceptor.request()
 Vue.prototype.$http = service
 
