@@ -21,7 +21,13 @@
       </el-form-item>
       <el-form-item prop="mailCode" label="验证码" class="captcha-container">
         <div class="captcha">
-            <el-button @click="sendEmailCode" :disabled="send.timer > 0" type="primary">{{sendText}}</el-button>
+            <el-button
+             @click="sendEmailCode"
+              :disabled="send.timer > 0"
+               type="primary"
+            >
+              {{sendText}}
+            </el-button>
         </div>
         <el-input v-model="form.mailCode"></el-input>
       </el-form-item>
@@ -81,7 +87,8 @@ export default {
       }
   },
   methods: {
-      sendEmailCode () {
+      async sendEmailCode () {
+        await this.$http.get('/sendcode?email=' + this.form.email)
           this.send.timer = 10
           const timer = setInterval(() => {
               this.send.timer--
