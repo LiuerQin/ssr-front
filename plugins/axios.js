@@ -6,6 +6,16 @@ const service = axios.create({
     baseURL: '/api'
 })
 
+service.interceptors.request.use(
+    async (config) => {
+        const token = localStorage.getItem('token')
+        if (token) {
+            config.headers.common['Authorization'] = `Bearer${token}`
+        }
+        return config
+    }
+)
+
 service.interceptors.response.use(
     async (response) => {
         let {data} = response

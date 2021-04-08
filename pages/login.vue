@@ -107,11 +107,13 @@ export default {
             email: this.form.email,
             password: md5(this.form.password),
             captcha: this.form.captcha,
+            emailcode: this.form.mailCode
           };
           const res = await this.$http.post("/user/login", obj);
           console.log(res);
           if (res.code == 0) {
             this.$message.success("登录成功");
+            localStorage.setItem('token', res.data.token)
             setTimeout(() => {
               this.$router.push("/");
             }, 500);
