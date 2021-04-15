@@ -14,25 +14,59 @@
           <p>计算hash进度：</p>
           <el-progress :text-inside="true" :stroke-width="26" :percentage="hashProgress"></el-progress>
         </div>
+        <div>
+          <!-- chunk.progress
+          progress < 0 error 红色
+          process == 100 success
+          别的数字 方块高度显示 -->
+          <div class="cube-container" :style="{width: cubeWidth + 'px'}">
+            <div class="cube" v-for="chunk in chunks" :key="chunk.name">
+              <div
+                :class="{
+                  'uploading': chunk.progress > 0 && chunk.progress < 100,
+                  'success': chunk.progress == 100,
+                  'error': chunk.progress < 0
+                }"
+                :style="{height: chunk.progress + '%'}"
+              >
+              <i class="el-icon-loading" style="color:#f56c6c" v-if="chunk.progress > 0 && chunk.progress < 100"></i>
+              </div>
+            </div>
+          </div>
+        </div>  
     </div>
 </template>
 
 <script>
 import sparkMD5 from 'spark-md5'
-const CHUNK_SIZE = 0.001 * 1024 * 1024
+const CHUNK_SIZE = 0.1 * 1024 * 1024
 export default {
     data () {
         return {
             file: null,
             progressPercent: 0,
             hashProgress: 0,
-            chunks: []
+            chunks: [],
+            hash: ''
         }
     },
     async mounted () {
         const res = await this.$http.get('/user/info')
         console.log(res)
         this.bindEvent()
+    },
+    computed: {
+      cubeWidth () {
+        return Math.ceil(Math.sqrt(this.chunks.length)) * 16
+      },
+      uploadProgress () {
+        if (!this.file || this.chunks.length) {
+          return 0
+        }
+        const loaded = this.chunks.map(item => item.chunk.size * item.progress)
+                        .reduce((acc, cur) => acc + cur, 0)
+        return Number((loaded * 100 / this.file.size).toFixed(2))
+      }
     },
     methods: {
         bindEvent () {
@@ -148,7 +182,7 @@ export default {
         async calculateHashSimple () {
           const file = this.file
           return new Promise(async (resolve) => {
-            const offset = 2 * 1024 * 1024
+            const offset = 0.01 * 1024 * 1024
             const size = file.size
             let cur = offset
             let chunks = [file.slice(0, cur)]
@@ -161,6 +195,7 @@ export default {
                 const middleChunk = file.slice(middle, middle + 2)
                 chunks.push(file.slice(cur, cur+ 2), middleChunk, file.slice(end - 2, end))
               }
+              cur += offset
             }
             console.log('myChunks', chunks)
             let reader = new FileReader()
@@ -173,6 +208,32 @@ export default {
             }
           })
         },
+        async uploadChunks () {
+          const requests = this.chunks.map((chunk) => {
+              let form = new FormData()
+              form.append('name', chunk.name)
+              form.append('chunk', chunk.chunk)
+              form.append('hash', chunk.hash)
+              return form
+          }).map((form, index) => {
+            return this.$http.post('/uploadfile', form, {
+                onUploadProgress: (progress) => {
+                    this.chunks[index].progress = Number(((progress.loaded/progress.total)*100).toFixed(2))
+                    // this.chunks[index].progress = 12
+                }
+              })
+            })
+            // @todo 并发量控制
+            await Promise.all(requests)
+            await this.mergeRequest()
+        },
+        async mergeRequest () {
+          this.$http.post('/mergefile', {
+            ext: this.file.name.split('.').pop(),
+            size: CHUNK_SIZE,
+            hash: this.hash
+          })
+        },
         async uploadFile () {
           this.progressPercent = 0
           this.hashProgress = 0
@@ -183,13 +244,25 @@ export default {
             //     console.log('文件格式正确')
             // }
             // 文件切片上传
-            // this.chunks = this.createFileChunk(this.file)
+            this.chunks = this.createFileChunk(this.file)
             // const hash = await this.calculateHashWorker()
             // const hash1 = await this.calculateHashIdle()
-            const hash2 = await this.calculateHashSimple()
+
+            this.hash = await this.calculateHashSimple()
+            this.chunks = this.chunks.map((chunk, index) => {
+              return {
+                name: this.hash + '-' + index,
+                index: chunk.index,
+                hash: this.hash,
+                chunk: chunk.file,
+                progress: 0
+              }
+            })
+            this.uploadChunks()
+
             // console.log('hash', hash)
             // console.log('hash1', hash1)
-            console.log('hash2', hash2)
+            // console.log('hash2', hash2)
 
             // 抽样hash
             // 布隆过滤器 损失一小部分精度换取效率
@@ -218,4 +291,18 @@ export default {
         border 2px dashed #eee
         text-align center 
         vertical-align middle
+    .cube-container
+        .cube
+            width 16px
+            height 16px
+            line-height 12px
+            border 1px solid black
+            background #eee
+            float left
+            > .success 
+                background-color green 
+            > .uploading
+                background-color blue
+            > .error
+                background-color red
 </style>
