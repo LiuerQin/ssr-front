@@ -34,12 +34,14 @@
             </div>
           </div>
         </div>  
+        <!-- 预加载loading，避免上传进度中loading图块刚开始显示不全 -->
+        <i class="el-icon-loading" style="visibility: hidden"></i>
     </div>
 </template>
 
 <script>
 import sparkMD5 from 'spark-md5'
-const CHUNK_SIZE = 0.1 * 1024 * 1024
+const CHUNK_SIZE = 100 * 1024
 export default {
     data () {
         return {
@@ -208,24 +210,66 @@ export default {
             }
           })
         },
-        async uploadChunks () {
-          const requests = this.chunks.map((chunk) => {
-              let form = new FormData()
-              form.append('name', chunk.name)
-              form.append('chunk', chunk.chunk)
-              form.append('hash', chunk.hash)
-              return form
-          }).map((form, index) => {
-            return this.$http.post('/uploadfile', form, {
-                onUploadProgress: (progress) => {
-                    this.chunks[index].progress = Number(((progress.loaded/progress.total)*100).toFixed(2))
-                    // this.chunks[index].progress = 12
-                }
-              })
+        async uploadChunks (uploadedList) {
+          console.log('this.chunks', this.chunks)
+          const requests = this.chunks
+            .filter((chunk => uploadedList.indexOf(chunk.name) < 0))
+            .map((chunk) => {
+                let form = new FormData()
+                form.append('name', chunk.name)
+                form.append('chunk', chunk.chunk)
+                form.append('hash', chunk.hash)
+                return {form, index: chunk.index, error: 0}
             })
             // @todo 并发量控制
-            await Promise.all(requests)
+            try {
+              await this.requestLimit(requests, 3)
+            } catch (err) {
+              this.$message.error('当前网络不好，已中断上传')
+            }
             await this.mergeRequest()
+            // await Promise.all(requests)
+        },
+        async requestLimit (chunkRequests, limit) {
+          let stopFlag = false
+          return new Promise((resolve, reject) => {
+            const start = async () => {
+              if (stopFlag) {
+                return
+              }
+              let task = chunkRequests.shift()
+              try {
+                await this.$http.post('/uploadfile', task.form, {
+                    onUploadProgress: (progress) => {
+                        this.chunks[task.index].progress = Number(((progress.loaded/progress.total)*100).toFixed(2))
+                    }
+                })
+                if (chunkRequests.length > 0) {
+                  start()
+                } else {
+                  resolve()
+                }
+              } catch (err) {
+                this.chunks[task.index].progress = -1
+                task.error++
+                if (task.error > 2) {
+                  stopFlag = true
+                  reject()
+                } else {
+                  chunkRequests.unshift(task)
+                  start()
+                }
+              }
+              
+            }
+            while(limit > 0) {
+              // setTimeout(() => {
+                start()
+              // }, (Math.random) * 2000)
+              
+              limit--
+            } 
+          })
         },
         async mergeRequest () {
           this.$http.post('/mergefile', {
@@ -248,17 +292,35 @@ export default {
             // const hash = await this.calculateHashWorker()
             // const hash1 = await this.calculateHashIdle()
 
+            // 文件是否上传过
+            // 如果之前已经上传成功，直接返回秒传成功
+            // 如果有文件切片，将剩余切片上传
+            // 如果没有上传过，将所有切片上传
             this.hash = await this.calculateHashSimple()
-            this.chunks = this.chunks.map((chunk, index) => {
-              return {
-                name: this.hash + '-' + index,
-                index: chunk.index,
-                hash: this.hash,
-                chunk: chunk.file,
-                progress: 0
-              }
+            const {data: {uploaded, uploadedList}} = await this.$http.post('/checkfile', {
+              hash: this.hash,
+              ext: this.file.name.split('.').pop()
             })
-            this.uploadChunks()
+            if (uploaded) {
+              this.chunks = this.chunks.map((chunk, index) => {
+                return {
+                  name: this.hash + '-' + index,
+                  progress: 100
+                }
+              })
+              return this.$message.success('秒传成功')
+            }
+            this.chunks = this.chunks
+              .map((chunk, index) => {
+                return {
+                  name: this.hash + '-' + index,
+                  index: index,
+                  hash: this.hash,
+                  chunk: chunk.file,
+                  progress: uploadedList.indexOf(`${this.hash}-${index}`) < 0 ? 0 : 100
+                }
+              })
+            this.uploadChunks(uploadedList)
 
             // console.log('hash', hash)
             // console.log('hash1', hash1)
