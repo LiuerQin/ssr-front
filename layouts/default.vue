@@ -1,9 +1,74 @@
 <template>
-  <div>
+  <el-container>
+    <el-header>
+      <el-menu mode="horizontal">
+        <el-menu-item index="0">
+          <nuxt-link to="/">
+            <img :src="userInfo.avatar || '/logo.jpeg'" class="my-avatar" alt="">
+          </nuxt-link>
+        </el-menu-item>
+        <el-menu-item>
+          <nuxt-link to="/"></nuxt-link>
+        </el-menu-item>
+        <template v-if="userInfo.id">
+          <el-menu-item>
+            <a>退出</a>
+          </el-menu-item>
+          <el-menu-item>
+            <a>{{userInfo.nickname}}</a>
+          </el-menu-item>
+        <el-menu-item>
+          <nuxt-link to="/editor/new">写文章</nuxt-link>
+        </el-menu-item>
+        </template>
+        
+        <template v-else>
+          <!-- 未登录 -->
+          <el-menu-item>
+            <nuxt-link to="/registry">注册</nuxt-link>
+          </el-menu-item>
+          <el-menu-item>
+            <nuxt-link to="/login">登录</nuxt-link>
+          </el-menu-item>
+        </template>
+      </el-menu>
+    </el-header>
+    <el-main>
+
     <Nuxt />
-  </div>
+    </el-main>
+    <el-footer>
+
+    </el-footer>
+  </el-container>
 </template>
 
+<script>
+export default {
+  mounted () {
+    this.getUserInfo()
+  },
+  computed: {
+    userInfo () {
+      return this.$store.state.user
+    }
+  },
+  methods: {
+    async getUserInfo () {
+      const token = localStorage.getItem('token')
+      if (token) {
+        this.$store.dispatch('user/detail')
+      }
+    }
+  }
+}
+</script>
+
+<style lang="stylus" scoped>
+  .my-avatar {
+    height: 100%
+  }
+</style>
 <style>
 html {
   font-family:
