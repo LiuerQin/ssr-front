@@ -1,34 +1,32 @@
 <template>
-  <div class="container">
-    <div>
-      <Logo />
-      <h1 class="title">
-        front
-      </h1>
-      <div class="links">
-        <a
-          href="https://nuxtjs.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button--green"
-        >
-          Documentation
-        </a>
-        <a
-          href="https://github.com/nuxt/nuxt.js"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button--grey"
-        >
-          GitHub
-        </a>
-      </div>
-    </div>
+  <div class="my-container">
+    <virtual-list :listData="articles" :size="200">
+
+    </virtual-list>
+    <!-- <div v-for="article in articles" :key="article.id">
+      {{article.title}}
+    </div> -->
   </div>
 </template>
 
 <script>
-export default {}
+import VirtualList from '~/components/VirtualList.vue'
+export default {
+  components: {
+    VirtualList
+  },
+  data () {
+    return {
+      articles: []
+    }
+  },
+  async mounted () {
+    let res = await this.$http.get('/article')
+    if (res.code == 0) {
+      this.articles = res.data
+    }
+  }
+}
 </script>
 
 <style>

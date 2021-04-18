@@ -124,4 +124,11 @@ html {
   color: #fff;
   background-color: #35495e;
 }
+.my-container{
+  width:980px;
+  height:75vh;
+  margin:0 auto;
+  background: #fff;
+  padding:20px;
+}
 </style>
